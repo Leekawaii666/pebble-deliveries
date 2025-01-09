@@ -149,7 +149,7 @@ Pebble.addEventListener('showConfiguration', function() {
     var timelinePinsEnabled = Settings.option('timelinePinsEnabled');
 
     Pebble.openURL(
-        'https://oonqt.github.io/pebble-deliveries/config?data=' +
+        'https://leekawaii666.github.io/pebble-deliveries/config?data=' +
         encodeURIComponent(
             JSON.stringify({
                 packages: data,
