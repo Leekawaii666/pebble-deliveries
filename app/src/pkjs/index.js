@@ -90,57 +90,58 @@ packagesMenu.on('select', function(e) {
 
     var trackingId = e.item.subtitle;
 
-    ajax({
-        url: 'https://deliveries.memester.xyz/api/tracking/' + trackingId,
-        type: 'json',
-    }, function(data) {
-        loadingScreen.hide();
+// Replace 'your_secret_key' with your actual 17TRACK API key
+const apiKey = '0ED3A7A89C413E7962A5856AC1E725A1';
 
-        var packageProgressMarks = [];
+fetch('https://api.17track.net/track/v2.2/gettrackinfo' + trackingID, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        '17token': apiKey
+    },
+    body: JSON.stringify([{ number: trackingId }])
+})
+.then(response => response.json())
+.then(data => {
+    loadingScreen.hide();
 
-        for (var i = 0; i < data.states.length; i++) {
-            var state = data.states[i];
-            
-            /* ok this is a very sped way of doing this but
-             api doesnt return that it is utc+10 so Date object tries to localize the date into correct timezone
-             when it is already correct */
-            var at = state.date.split('T');
-            var date = at[0].split('-');
-            var time = at[1].split(':');
-
-            var hour = parseInt(time[0]);
-
-            packageProgressMarks.push({
-                title: state.status,
-                subtitle: 'At: ' + (date[1] - 0) /* remove trailing zeros */ + '/' + date[2] + ', ' + (hour >= 12 ? hour - 12 : hour) + ':' + time[1] + (hour >= 12 ? ' PM' : ' AM')
-            });
-        }
-
-        var meta = [{ title: 'Status: ', subtitle: data.status }];
-        if (data.daysInTransit) {
-            meta.push({ title: 'Days in Transit: ', subtitle: data.daysInTransit });
-        }
-        if (data.minRemaining) { // I'm not 100% sure that ETA will always exist.. Would be nice if I had some other packages.. Better safe than sorry I guess, could remove in the future
-            meta.push({
-                title: 'ETA:',
-                subtitle: data.minRemaining + '-' + data.maxRemaining + ' Days'
-            });
-        }
-
-        packageInfo.items(0, meta);
-        packageInfo.items(1, packageProgressMarks);
-        packageInfo.show();
-    }, function(err) {
-        loadingScreen.hide();
-        Vibe.vibrate('double');
+    const packageProgressMarks = data[0].data.map(event => {
+        const eventTime = event.a.split('T');
+        const date = eventTime[0].split('-');
+        const time = eventTime[1].split(':');
+        const hour = parseInt(time[0]);
         
-        if (err.error) {
-            showError(err.error);
-        } else {
-            console.log(JSON.stringify(err));
-            showError('Something went wrong. Try checking your network connection.')
-        }
+        return {
+            title: event.z,
+            subtitle: `At: ${date[1]}/${date[2]}, ${hour >= 12 ? hour - 12 : hour}:${time[1]} ${hour >= 12 ? 'PM' : 'AM'}`
+        };
     });
+
+    const meta = [{ title: 'Status:', subtitle: data[0].status }];
+    if (data[0].daysInTransit) {
+        meta.push({ title: 'Days in Transit:', subtitle: data[0].daysInTransit });
+    }
+    if (data[0].minRemaining) {
+        meta.push({
+            title: 'ETA:',
+            subtitle: `${data[0].minRemaining}-${data[0].maxRemaining} Days`
+        });
+    }
+
+    packageInfo.items(0, meta);
+    packageInfo.items(1, packageProgressMarks);
+    packageInfo.show();
+})
+.catch(err => {
+    loadingScreen.hide();
+    Vibe.vibrate('double');
+    
+    if (err.error) {
+        showError(err.error);
+    } else {
+        console.error(err);
+        showError('Something went wrong. Try checking your network connection.');
+    }
 });
 
 Pebble.addEventListener('showConfiguration', function() {
